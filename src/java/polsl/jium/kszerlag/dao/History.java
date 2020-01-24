@@ -13,25 +13,54 @@ import javax.persistence.Id;
 import javax.persistence.Table;
 
 /**
+ * Entity represented by History table in database.
+ * Table based on this entity contains calculated expressions in past.
  *
- * @author szerlag
+ * @author Kamil Szerląg
+ * @version 1.0
  */
 @Entity
 @Table(name = "history")
 public class History implements Serializable {
 
+    /**
+     * For serialization purpose
+     */
     private static final long serialVersionUID = 1L;
+    
+    /**
+     * Entity id.
+     * Primary key for History table.
+     */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
     
+    /**
+     * Calculated expression.
+     * Example: 1/2+2/3
+     */
     private String expression;
     
+    /**
+     * Result of calculation.
+     * Example: 7/6
+     */
     private String result;
 
+    /**
+     * Default constructor.
+     * Required for JPA Entity
+     */
     public History() {
     }
 
+    /**
+     * Non default constructor. 
+     * 
+     * @param expression Calculated expression.
+     * @param result Result of calculation.
+     */
     public History(String expression, String result) {
         this.expression = expression;
         this.result = result;
@@ -70,7 +99,6 @@ public class History implements Serializable {
 
     @Override
     public boolean equals(Object object) {
-        // TODO: Warning - this method won't work in the case the id fields are not set
         if (!(object instanceof History)) {
             return false;
         }

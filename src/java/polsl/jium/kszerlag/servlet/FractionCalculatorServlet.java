@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Collections;
 import java.util.List;
+import javax.persistence.PersistenceException;
 import javax.servlet.ServletException;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
@@ -20,7 +21,7 @@ import polsl.jium.kszerlag.model.evaluator.SimpleFractionExpressionEvaluator;
  * Servlet class supporting http request handling for web
  * and fraction calculator functionalities
  * 
- * @version 1.0
+ * @version 2.0
  * @author Kamil Szerląg
  */
 public class FractionCalculatorServlet extends HttpServlet {
@@ -29,6 +30,10 @@ public class FractionCalculatorServlet extends HttpServlet {
      * Member used to calculate expression
      */
     private SimpleFractionExpressionEvaluator evaluator;
+    
+    /**
+     * Member used to performing operation on database
+     */
     private FractionCalculatorDao calculatorDao; 
     
     /**
@@ -102,19 +107,15 @@ public class FractionCalculatorServlet extends HttpServlet {
             out.println("<form action=" + request.getContextPath() +">");
             out.println("<input type=\"submit\" value=\"Wyczyść wynik\"/>");
             out.println("</form>");
-            out.println("<br>");
-            if (expression != null) {
-                out.println("<form name=\"saveHistory\" action=\"FractionCalculatorServlet\">");
-                out.println("<input type=\"hidden\" name=\"savedExpression\" value=\"" + expression + "\" size=\"10\" required />");
-                out.println("<input type=\"hidden\" name=\"savedResult\" value=\"" + result + "\" size=\"10\" required />");
-                out.println("<input type=\"submit\" value=\"Zapisz w historii\" />");
-                out.println("</form>");
-            }
-            String savedExpression = request.getParameter("savedExpression");
-            String savedResult = request.getParameter("savedResult");           
-            if (savedExpression != null && savedResult != null) {
-                saveCalculationResult(savedExpression, savedResult);
-                out.println("<h4 style=\"color: green\">Wynik został zapisany do historii!</h4>");
+            out.println("<br>");       
+            if (expression != null && result != null) {
+                try {
+                    saveCalculationResult(expression, result);
+                    out.println("<h4 style=\"color: green\">Wynik został zapisany do historii!</h4>");
+                } catch (PersistenceException e) {
+                    out.println("<h4 style=\"color: red\">Zapis wyniku do historii nie powiódł się.</h4>");
+                    exception = e.getLocalizedMessage();
+                }
             }
             out.println("<hr>");
             out.println("<h4>Historia obliczeń:</h4>");
@@ -153,11 +154,23 @@ public class FractionCalculatorServlet extends HttpServlet {
         return defaultValue;
     }
     
-    private void saveCalculationResult(String expression, String result) {
+    /**
+     * Persisting calculation in history.
+     * 
+     * @param expression string contians expressing to calculate
+     * @param result result of calculated expression
+     * @throws PersistanceException if problem with persisting in db occured.
+     */
+    private void saveCalculationResult(String expression, String result) throws PersistenceException {
         History exp = new History(expression, result);
         calculatorDao.persist(exp);
     }
     
+    /**
+     * Retriving calculation from database. 
+     * 
+     * @return List of calculated expressions from saved in history.
+     */
     private List<History> findAllExpressions() {
         return calculatorDao.findAll();
     }
