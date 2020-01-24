@@ -2,11 +2,15 @@ package polsl.jium.kszerlag.servlet;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.Collections;
+import java.util.List;
 import javax.servlet.ServletException;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import polsl.jium.kszerlag.dao.History;
+import polsl.jium.kszerlag.dao.FractionCalculatorDao;
 import polsl.jium.kszerlag.model.arithmetic.fraction.Fraction;
 import polsl.jium.kszerlag.model.arithmetic.fraction.FractionArithmeticException;
 import polsl.jium.kszerlag.model.evaluator.EvaluationExpressionException;
@@ -25,6 +29,7 @@ public class FractionCalculatorServlet extends HttpServlet {
      * Member used to calculate expression
      */
     private SimpleFractionExpressionEvaluator evaluator;
+    private FractionCalculatorDao calculatorDao; 
     
     /**
      * Initializing member variables 
@@ -33,6 +38,7 @@ public class FractionCalculatorServlet extends HttpServlet {
     @Override
     public void init() throws ServletException {
         evaluator = new SimpleFractionExpressionEvaluator();
+        calculatorDao = new FractionCalculatorDao();
     }
     
     /**
@@ -56,6 +62,7 @@ public class FractionCalculatorServlet extends HttpServlet {
             out.println("<body>");
             out.println("<div style=\"position: absolute; left: 40%;\">");
             out.println("<h1>Kalkulator ułamkowy</h1>");
+            out.println("<hr>");
             out.println("<div>");
             out.println("<label>Wyrażenie:</label>");
             out.println("<form name=\"calculate\" action=\"FractionCalculatorServlet\">");
@@ -80,9 +87,9 @@ public class FractionCalculatorServlet extends HttpServlet {
                 if (result == null) {
                     result = getInitParameter("defaultResult");
                 }
-                out.println("<h1>Wynik obliczeń:</br>" + (expression != null && !expression.isEmpty() ? expression + " = " + result : result) + "</h1>");
+                out.println("<h2>Wynik obliczeń:</br>" + (expression != null && !expression.isEmpty() ? expression + " = " + result : result) + "</h2>");
             } catch (EvaluationExpressionException | FractionArithmeticException e) {
-                out.println("<h1 style=\"color: red\"> Wprowadzone wyrażenie jest niepoprawne! </h1>");
+                out.println("<h2 style=\"color: red\"> Wprowadzone wyrażenie jest niepoprawne! </h2>");
                 e.printStackTrace();
                 exception = e.toString();
             }
@@ -95,10 +102,33 @@ public class FractionCalculatorServlet extends HttpServlet {
             out.println("<form action=" + request.getContextPath() +">");
             out.println("<input type=\"submit\" value=\"Wyczyść wynik\"/>");
             out.println("</form>");
+            out.println("<br>");
+            if (expression != null) {
+                out.println("<form name=\"saveHistory\" action=\"FractionCalculatorServlet\">");
+                out.println("<input type=\"hidden\" name=\"savedExpression\" value=\"" + expression + "\" size=\"10\" required />");
+                out.println("<input type=\"hidden\" name=\"savedResult\" value=\"" + result + "\" size=\"10\" required />");
+                out.println("<input type=\"submit\" value=\"Zapisz w historii\" />");
+                out.println("</form>");
+            }
+            String savedExpression = request.getParameter("savedExpression");
+            String savedResult = request.getParameter("savedResult");           
+            if (savedExpression != null && savedResult != null) {
+                saveCalculationResult(savedExpression, savedResult);
+                out.println("<h4 style=\"color: green\">Wynik został zapisany do historii!</h4>");
+            }
+            out.println("<hr>");
+            out.println("<h4>Historia obliczeń:</h4>");
+            List<History> calculatedExpressions = findAllExpressions();
+            if (calculatedExpressions != null && !calculatedExpressions.isEmpty()) {
+                Collections.reverse(calculatedExpressions);
+                calculatedExpressions.forEach(exp -> out.println("<p>" + exp.getExpression() + "=" + exp.getResult() + "</p>"));
+            } else {
+                out.println("<p>Brak zapisanych obliczeń w historii</p>");
+            }
             out.println("</div>");
             out.println("</div>");
             if (exception != null) {
-                out.println("<h4 style=\"color: red\">Exception: " + exception + "</p>");
+                out.println("<h4 style=\"color: red\">Exception: " + exception + "</h4>");
             }
             out.println("</body>");
             out.println("</html>");
@@ -121,6 +151,15 @@ public class FractionCalculatorServlet extends HttpServlet {
             }
         }
         return defaultValue;
+    }
+    
+    private void saveCalculationResult(String expression, String result) {
+        History exp = new History(expression, result);
+        calculatorDao.persist(exp);
+    }
+    
+    private List<History> findAllExpressions() {
+        return calculatorDao.findAll();
     }
     
     // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
